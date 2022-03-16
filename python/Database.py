@@ -29,7 +29,7 @@ class Database:
             self.create_table(gv.CREATE_CATEGORY_TABLE_QUERY,"category")
             self.create_table(gv.CREATE_PRODUCT_TABLE_QUERY,"product")
             self.create_table(gv.CREATE_SUB_CATEGORY_TABLE_QUERY,"sub_category")
-
+            self.create_table(gv.CREATE_PRICE_TABLE_QUERY,"price")
 
 
     def create_table(self,sql_query, table_name = "unknown"):
@@ -176,11 +176,24 @@ class Database:
             id,  name, description , category_id = sub_category
             if description == 'None':
                 description = None
-            print(name)
             sub_category = SubCategory(id,name,description,category_id)
             sub_category_list.append(sub_category)
         self.db.close()
         return sub_category_list
+
+    def get_category_with_sub_category(self,sub_category : SubCategory) -> Category:
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+        self.im.execute(f"SELECT * FROM category WHERE id={sub_category.category_id}")
+        returnValue = self.im.fetchone()
+        if returnValue == None:
+            return None
+        id, name, description = returnValue #CATEGORY model değişirse unutma
+        if description == 'None':
+            description = None
+        category = Category(id,name,description)
+        self.db.close()
+        return category
 
 
     def add_sub_category(self,
