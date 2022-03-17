@@ -5,6 +5,7 @@ from os import getcwd
 from typing import List
 
 from python.model.Category import Category
+from python.model.Price import Price
 from python.model.Product import Product
 from python.model.SubCategory import SubCategory
 from python.global_variables import global_variables as gv
@@ -68,19 +69,7 @@ class Database:
         self.db.close()
         return category
 
-    def add_category(self,category : Category):
-        self.db = sql.connect(self.location)
-        self.im = self.db.cursor()
-        KEY = f"name,description"
-        VALUES = f"""
-        '{category.name}',
-        '{category.description}'
-        """
-        self.im.execute(f"INSERT INTO category({KEY}) VALUES({VALUES})")
-        category.id = self.im.lastrowid
-        self.db.commit()
-        self.db.close()
-        logging.info("Category added. Category Name: " + category.name)
+
     
     def delete_category_with_id(self,id):
         self.db = sql.connect(self.location)
@@ -195,21 +184,92 @@ class Database:
         self.db.close()
         return category
 
+    def add_category(self,category : Category):
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+
+        VALUES = f"""
+        '{category.name}',
+        '{category.description}'
+        """
+        
+        self.im.execute(f"INSERT INTO category({gv.ADD_CATEGORY_KEY}) VALUES({VALUES})")
+        category.id = self.im.lastrowid
+        self.db.commit()
+        self.db.close()
+        logging.info("Category added. Category Name: " + category.name)
 
     def add_sub_category(self,
                         sub_category:SubCategory,
                         category:Category):
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
-        KEY = f"name,description,category_id"
         VALUES = f"""
         '{sub_category.name}',
         '{sub_category.description}',
         {category.id}
         """
-        self.im.execute(f"INSERT INTO sub_category({KEY}) VALUES({VALUES})")
+        self.im.execute(f"INSERT INTO sub_category({gv.ADD_SUB_CATEGORY_KEY}) VALUES({VALUES})")
         sub_category.id = self.im.lastrowid
         self.db.commit()
         self.db.close()
         logging.info("Sub Category added. Sub Category Name: " + sub_category.name)
+    
+    def add_product(self,product:Product):
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+        VALUES = f"""
+        '{product.name}',
+        '{product.description}',
+        {product.category_id},
+        {product.sub_category_id}
+        """
+        self.im.execute(f"INSERT INTO product({gv.ADD_PRODUCT_KEY}) VALUES({VALUES})")
+        product.set_id(self.im.lastrowid)
+        self.db.commit()
+        self.db.close()
+        logging.info("Product added. Product Name: " + product.name)
+        return self.im.lastrowid
+    def add_price(self, price:Price):
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+        VALUES = f"""
+        {price.price_value},
+        {price.product_id},
+        {price.time_unix}
+        """
+        self.im.execute(f"INSERT INTO price({gv.ADD_PRICE_KEY}) VALUES({VALUES})")
+        price.id = self.im.lastrowid
+        self.db.commit()
+        self.db.close()
+        return price
 
+    def get_product_id_with_name_description(self,name:str,description:str) -> Product | None:
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+        try:
+            self.im.execute(f"SELECT * FROM product WHERE name='{name}' AND description='{description}'")
+        except Exception as e :
+            print(f"Name: {name}, Desc: {description} Error: {e}")
+            return None
+        returnValue =self.im.fetchone()
+        if returnValue == None:
+            return None
+        else:
+            #CREATE_PRODUCT_TABLE_QUERY = """CREATE TABLE IF NOT EXISTS product (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT, category_id INTEGER, sub_category_id INTEGER);"""
+            id, name, description, category_id, sub_category_id = returnValue
+            product = Product(id,name,description,category_id,sub_category_id)
+            self.db.close()
+            return product
+
+    def get_last_price_of_product(self,product : Product) -> Price:
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+        self.im.execute(f"SELECT * FROM price WHERE product_id={product.id} ORDER BY time_unix DESC LIMIT 1")
+        returnValue = self.im.fetchone()
+        if returnValue == None:
+            return None
+        id, price_value, product_id, time_unix = returnValue
+        price = Price(id,price_value,product_id,time_unix)
+        self.db.close()
+        return price
