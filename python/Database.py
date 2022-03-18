@@ -1,6 +1,6 @@
-from calendar import c
+
 import sqlite3 as sql
-from os.path import exists
+
 from os import getcwd
 from typing import List
 
@@ -32,7 +32,6 @@ class Database:
             self.create_table(gv.CREATE_SUB_CATEGORY_TABLE_QUERY,"sub_category")
             self.create_table(gv.CREATE_PRICE_TABLE_QUERY,"price")
 
-
     def create_table(self,sql_query, table_name = "unknown"):
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
@@ -40,20 +39,6 @@ class Database:
         self.db.commit()
         logging.info("Table created. Table Name: " + table_name)
         self.db.close()
-
-    def get_category_with_id(self,id) -> Category:
-        self.db = sql.connect(self.location)
-        self.im = self.db.cursor()
-        self.im.execute(f"SELECT * FROM category WHERE id={id}")
-        returnValue = self.im.fetchone()
-        if returnValue == None:
-            return None
-        id, name, description = returnValue      #CATEGORY model değişirse unutma
-        if description == 'None':
-            description = None
-        category = Category(id,name,description)
-        self.db.close()
-        return category
 
     def get_category_with_name(self,name) -> Category:
         self.db = sql.connect(self.location)
@@ -68,25 +53,8 @@ class Database:
         category = Category(id,name,description)
         self.db.close()
         return category
-
-
     
-    def delete_category_with_id(self,id):
-        self.db = sql.connect(self.location)
-        self.im = self.db.cursor()
-        self.im.execute(f"DELETE FROM category WHERE id={id}")
-        self.db.commit()
-        self.db.close()
-    
-    def delete_category(self,category : Category):
-        self.db = sql.connect(self.location)
-        self.im = self.db.cursor()
-        self.im.execute(f"DELETE FROM category WHERE id={category.id}")
-        self.db.commit()
-        logging.info("Category deleted. Category Name: " + category.name)
-        self.db.close()
-    
-    def get_table_names(self):
+    def get_table_names(self) -> List[str]:
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
         self.im.execute("SELECT name FROM sqlite_master")
@@ -98,50 +66,38 @@ class Database:
         tableNames = newTableNames
         self.db.close()
         return tableNames
-
-    def get_all_category(self):
-        self.category_list.clear()
-
-        tableNames = self.get_table_names()
-        self.db = sql.connect(self.location)
-        self.im = self.db.cursor()
-        if "category" in tableNames : 
-            self.im.execute("SELECT * FROM category")
-            allDb = self.im.fetchall()
-            for i in allDb:
-                id, name, description = i #CATEGORY model değişirse unutma
-                if description == 'None':
-                    description = None
-                category = Category(id,name,description)
-
-                sub_category_list = self.get_sub_category_with_category(category)
-                category.sub_category_list = sub_category_list
-                
-                self.category_list.append(category)
-                self.len_category_list += 1
-        else:
-            self.create_table(gv.CREATE_CATEGORY_TABLE_QUERY)
-        self.db.close()
-        logging.info(f"Category table fetched Lenght: {self.len_category_list}")
-        return self.category_list
-
-    def update_category(self,category : Category):
-        self.db = sql.connect(self.location)
-        self.im = self.db.cursor()
-        self.im.execute(f"UPDATE category SET name='{category.name}',description='{category.description}' WHERE id={category.id}")
-        self.db.commit()
-        logging.info("Category updated. Category Name: " + category.name)
-        self.db.close()
     
-    def get_lenght_category_table(self):
+    def check_table_names(self,table_name) -> bool:
+        tableNames = self.get_table_names()
+        if table_name in tableNames:
+            return True
+        else:
+            return False
+
+    def get_all_category(self) -> List[Category]:
+        """Get all Category"""
+        self.category_list.clear()
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
         self.im.execute("SELECT * FROM category")
-        lenght = self.im.fetchall()
+        allDb = self.im.fetchall()
+        for i in allDb:
+            id, name, description = i #CATEGORY model değişirse unutma
+            if description == 'None':
+                description = None
+            category = Category(id,name,description)
+            
+            sub_category_list = self.get_sub_categories(category)
+            category.set_sub_categories(sub_category_list)
+            
+            self.category_list.append(category)
+            self.len_category_list += 1
         self.db.close()
-        return len(lenght)
+        logging.info(f"Category table fetched Lenght: {self.len_category_list}")
+        return self.category_list
     
-    def get_sub_category_with_category_id_and_name(self,category_id,name) -> SubCategory:
+    def get_sub_category_with_id_name(self,category_id,name) -> SubCategory:
+        """Get SubCategory with id and name"""
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
         self.im.execute(f"SELECT * FROM sub_category WHERE category_id={category_id} AND name='{name}'")
@@ -155,7 +111,8 @@ class Database:
         self.db.close()
         return sub_category
 
-    def get_sub_category_with_category(self,category : Category) -> List[SubCategory]:
+    def get_sub_categories(self,category : Category) -> List[SubCategory]:
+        """Get SubCategory with Category(ID)"""
         sub_category_list = []
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
@@ -181,6 +138,8 @@ class Database:
         if description == 'None':
             description = None
         category = Category(id,name,description)
+        sub_category_list = self.get_sub_categories(category)
+        category.set_sub_categories(sub_category_list)
         self.db.close()
         return category
 
@@ -197,7 +156,7 @@ class Database:
         category.id = self.im.lastrowid
         self.db.commit()
         self.db.close()
-        logging.info("Category added. Category Name: " + category.name)
+        logging.info(f"Category added. Category Name: {category.name}")
 
     def add_sub_category(self,
                         sub_category:SubCategory,
@@ -213,8 +172,8 @@ class Database:
         sub_category.id = self.im.lastrowid
         self.db.commit()
         self.db.close()
-        logging.info("Sub Category added. Sub Category Name: " + sub_category.name)
-    
+        logging.info(f"{sub_category.name} sub category added for {category.name}.")
+
     def add_product(self,product:Product):
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
@@ -230,6 +189,7 @@ class Database:
         self.db.close()
         logging.info("Product added. Product Name: " + product.name)
         return self.im.lastrowid
+
     def add_price(self, price:Price):
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
@@ -262,7 +222,8 @@ class Database:
             self.db.close()
             return product
 
-    def get_last_price_of_product(self,product : Product) -> Price:
+    def get_last_price(self,product : Product) -> Price:
+        
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
         self.im.execute(f"SELECT * FROM price WHERE product_id={product.id} ORDER BY time_unix DESC LIMIT 1")
@@ -273,3 +234,17 @@ class Database:
         price = Price(id,price_value,product_id,time_unix)
         self.db.close()
         return price
+
+    def get_all_product(self,sub_category:SubCategory) -> List[Product]:
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+        self.im.execute(f"SELECT * FROM product WHERE sub_category_id={sub_category.id}")
+        returnValue = self.im.fetchall()
+        product_list = []
+        for product in returnValue:
+            id, name, description, category_id, sub_category_id = product
+            product = Product(id,name,description,category_id,sub_category_id)
+            product.set_price(self.get_last_price(product))
+            product_list.append(product)
+        self.db.close()
+        return product_list

@@ -14,5 +14,8 @@ class Product:
         self.category_id = category_id
         self.sub_category_id = sub_category_id
         self.price = price
+        
     def set_id(self,id : int) -> None:
         self.id = id
+    def set_price(self, price : Price) -> None:
+        self.price = price
