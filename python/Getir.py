@@ -28,13 +28,15 @@ class Getir:
 
         self.database = Database(gv.DATABASE_LOCATION, gv.DATABASE_NAME)
 
-        self.load_category_from_db()  # load category, sub_category from database
+        
 
         pw = sync_playwright().start()
         self.browser = pw.chromium.launch(headless=headless, slow_mo=slow_mo)
 
         self.page = self.browser.new_page()
-
+        
+        self.load_category_from_db()  # load category, sub_category from database
+        
     def set_logging(self):
         logging.basicConfig(filename=fr'log/log_{self.get_time()}.log',
                             level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
@@ -211,6 +213,7 @@ class Getir:
 
     def get_all_getir_products(self, pass_yeni_urunler : bool = True, pass_indirimler : bool = True, pass_ilginizi_cekebilecekler : bool = True ):
         for category in self.category_list:
+            self.page.goto(gv.GOOGLE)
             if pass_yeni_urunler and category.name == "Yeni Ürünler":
                 print("Pass Yeni Ürünler")
                 pass
@@ -303,19 +306,26 @@ class Getir:
                 soup = BeautifulSoup(html, "html.parser")
                 all_product_article = soup.find_all("article")
                 for product_article in all_product_article:
-
+                    has_discount = False
+                    discount_price = "0"
+                    
                     div_price_wrapper = product_article.select(
                         "div[class^='style__PriceWrapper']")[0]
+                    
                     price = div_price_wrapper.select("span")
+                    
                     if len(price) == 1:
-                        price_text = price[0].text
+                        original_price = price[0].text
                     elif len(price) == 2: # indirimli ürün 2 fiyat var
-                        print(f"İndirimli ürün orijinal fiyat: {price[0].text} indirimli fiyat: {price[1].text}")
-                        price_text = price[1].text
+                        original_price = price[0].text
+                        has_discount = True
+                        discount_price = price[1].text
                     else:
                         logging.error("Price not found")
-                        price_text = "0"
-                    price_text = self.clear_price(price_text)
+                        original_price = "0"
+                        
+                    discount_price = self.clear_price(discount_price)
+                    original_price = self.clear_price(original_price)
 
                     # price = div_price_wrapper.select("span")[0].text #OK
 
@@ -351,17 +361,21 @@ class Getir:
                     last_price = self.database.get_last_price(product_obj)
                     if last_price == None:
                         price_obj = Price(
-                            price_value=price_text, product_id=product_obj.id, time_unix=time())
+                            price_value=original_price, product_id=product_obj.id, time_unix=time(), has_discount=has_discount, discount_price=discount_price)
                         self.database.add_price(price_obj)
-                        print(
-                            f"Name: {span_text} {p_paragraph}, price: {price_text}₺")
-                    elif last_price.price_value != price_text:
+                        if has_discount:
+                            print(
+                                f"Name: {span_text} {p_paragraph}, original price: {original_price}, discount price: {discount_price}")
+                        else:
+                            print(
+                                f"Name: {span_text} {p_paragraph}, price: {original_price}₺")
+                    elif last_price.price_value != original_price:
                         price_obj = Price(
-                            price_value=price_text, product_id=product_obj.id, time_unix=time())
+                            price_value=original_price, product_id=product_obj.id, time_unix=time(), has_discount=has_discount, discount_price=discount_price)
                         self.database.add_price(price_obj)
                         change_price_count += 1
                         print(
-                            f"Name: {span_text} {p_paragraph}, price: {price_text}₺, old price: {last_price.price_value}₺")
+                            f"Name: {span_text} {p_paragraph}, price: {original_price}₺, old price: {last_price.price_value}₺")
 
 
             print(f"{sub_category.name} new product count: {new_product_count}, old product count: {old_product_count}, change price count: {change_price_count}")

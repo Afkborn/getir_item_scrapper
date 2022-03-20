@@ -7,9 +7,10 @@ class Product:
                 description : str = None,
                 category_id : int = None,
                 sub_category_id : int =None,
-                price : Price = None) -> None:
+                price : Price = None,
+                ) -> None:
         self.id = id
-        self.name = name
+        self.name = name 
         self.description = description
         self.category_id = category_id
         self.sub_category_id = sub_category_id

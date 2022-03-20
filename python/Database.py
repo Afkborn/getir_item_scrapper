@@ -196,7 +196,9 @@ class Database:
         VALUES = f"""
         {price.price_value},
         {price.product_id},
-        {price.time_unix}
+        {price.time_unix},
+        {price.has_discount},
+        {price.discount_price}
         """
         self.im.execute(f"INSERT INTO price({gv.ADD_PRICE_KEY}) VALUES({VALUES})")
         price.id = self.im.lastrowid
@@ -230,8 +232,14 @@ class Database:
         returnValue = self.im.fetchone()
         if returnValue == None:
             return None
-        id, price_value, product_id, time_unix = returnValue
-        price = Price(id,price_value,product_id,time_unix)
+        id, price_value, product_id, time_unix, has_discount, discount_price = returnValue
+        
+        if has_discount == 0:
+            has_discount = False
+        else:
+            has_discount = True
+            
+        price = Price(id,price_value,product_id,time_unix,has_discount,discount_price)
         self.db.close()
         return price
 
