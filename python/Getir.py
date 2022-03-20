@@ -259,7 +259,7 @@ class Getir:
                     html = card_wrapper.inner_html()
                     return html
 
-
+ 
     def get_product_list_db(self, sub_category: SubCategory) -> List[Product]:
         return self.database.get_all_product(sub_category)
 
@@ -308,7 +308,7 @@ class Getir:
                 for product_article in all_product_article:
                     has_discount = False
                     discount_price = "0"
-                    
+                    src  = product_article.select("img")
                     div_price_wrapper = product_article.select(
                         "div[class^='style__PriceWrapper']")[0]
                     
