@@ -22,6 +22,7 @@ class Getir:
 
     category_list = []
 
+
     def __init__(self, headless=False, slow_mo=50):
         Compatibility.check_folder()
         self.set_logging()
@@ -51,9 +52,17 @@ class Getir:
     def load_category_from_db(self) -> List[Category]:
         self.category_list.clear()
         self.category_list = self.database.get_all_category()
+        
         if len(self.category_list) == 0:
-            logging.info("No category found in database")
+            logging.info("No category, sub category and products found in database")
+            print("No category, sub category and products found in database")
             self.get_getir_category_with_sub_category()
+        else:
+            self.len_category_list = self.database.len_category_list
+            self.len_sub_category_list = self.database.len_sub_category_list
+            self.product_list = self.database.get_all_product()
+            print(f"{self.len_category_list} categories, {self.len_sub_category_list} sub categories and {len(self.product_list)} products found in database")
+            logging.info(f"{self.len_category_list} categories, {self.len_sub_category_list} sub categories and {len(self.product_list)} products found in database")
         return self.category_list
 
     def get_getir_category_with_sub_category(self):
@@ -261,7 +270,7 @@ class Getir:
 
  
     def get_product_list_db(self, sub_category: SubCategory) -> List[Product]:
-        return self.database.get_all_product(sub_category)
+        return self.database.get_product_w_sub_category(sub_category)
 
     def get_product_list_web(self, sub_category: SubCategory):
         """Get product list from web page with sub_category"""

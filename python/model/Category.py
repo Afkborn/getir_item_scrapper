@@ -17,6 +17,8 @@ class Category:
         return self.sub_category_list
     def set_sub_categories(self,sub_category_list : List[SubCategory]) -> None:
         self.sub_category_list = sub_category_list
+    def get_len_sub_categories(self) -> int:
+        return len(self.sub_category_list)
 
 
 

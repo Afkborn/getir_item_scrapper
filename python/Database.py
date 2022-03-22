@@ -18,7 +18,10 @@ class Database:
 
     category_list = []
     len_category_list = 0
-
+    len_sub_category_list = 0
+    
+    product_list = []
+    product_count = 0
     def __init__(self, location, name) -> None:
         
         self.name = name
@@ -76,11 +79,14 @@ class Database:
 
     def get_all_category(self) -> List[Category]:
         """Get all Category"""
+        self.len_category_list = 0
+        self.len_sub_category_list = 0
         self.category_list.clear()
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
         self.im.execute("SELECT * FROM category")
         allDb = self.im.fetchall()
+
         for i in allDb:
             id, name, description = i #CATEGORY model değişirse unutma
             if description == 'None':
@@ -89,11 +95,11 @@ class Database:
             
             sub_category_list = self.get_sub_categories(category)
             category.set_sub_categories(sub_category_list)
-            
+            self.len_sub_category_list += category.get_len_sub_categories()
             self.category_list.append(category)
             self.len_category_list += 1
         self.db.close()
-        logging.info(f"Category table fetched Lenght: {self.len_category_list}")
+        logging.info(f"Category table fetched Lenght: {self.len_category_list}, sub_category table fetched Lenght: {self.len_sub_category_list}")
         return self.category_list
     
     def get_sub_category_with_id_name(self,category_id,name) -> SubCategory:
@@ -243,16 +249,32 @@ class Database:
         self.db.close()
         return price
 
-    def get_all_product(self,sub_category:SubCategory) -> List[Product]:
+    def get_product_w_sub_category(self,sub_category:SubCategory) -> List[Product]:
         self.db = sql.connect(self.location)
         self.im = self.db.cursor()
         self.im.execute(f"SELECT * FROM product WHERE sub_category_id={sub_category.id}")
         returnValue = self.im.fetchall()
-        product_list = []
+        self.product_list = []
+        self.product_count = 0
         for product in returnValue:
             id, name, description, category_id, sub_category_id = product
             product = Product(id,name,description,category_id,sub_category_id)
             product.set_price(self.get_last_price(product))
-            product_list.append(product)
+            self.product_list.append(product)
         self.db.close()
-        return product_list
+        return self.product_list
+    
+    def get_all_product(self) -> List[Product]:
+        self.db = sql.connect(self.location)
+        self.im = self.db.cursor()
+        self.im.execute(f"SELECT * FROM product")
+        returnValue = self.im.fetchall()
+        self.product_list = []
+        self.product_count = 0
+        for product in returnValue:
+            id, name, description, category_id, sub_category_id = product
+            product = Product(id,name,description,category_id,sub_category_id)
+            product.set_price(self.get_last_price(product))
+            self.product_list.append(product)
+        self.db.close()
+        return self.product_list
